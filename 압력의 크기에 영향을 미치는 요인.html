@@ -1,0 +1,609 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>압력 실험 가상 실습실</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+    }
+
+    html, body {
+      width: 100%;
+      height: 100vh;
+      height: 100dvh;
+      overflow: hidden;
+      font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background-color: #F7F4EF;
+      color: #4A4036;
+    }
+
+    .lab-container {
+      display: flex;
+      width: 100vw;
+      height: 100vh;
+      height: 100dvh;
+      position: relative;
+    }
+
+    .split-section {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+      border-right: 2px dashed #D6CCC2;
+      background-color: #FAF8F5;
+      overflow: hidden;
+    }
+
+    .split-section:last-child {
+      border-right: none;
+    }
+
+    /* 상단 버튼 컨트롤 패널 */
+    .control-panel {
+      padding: 1vmin;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 0.8vmin;
+      background-color: rgba(238, 232, 222, 0.75);
+      backdrop-filter: blur(4px);
+      border-bottom: 2px solid #D6CCC2;
+      z-index: 10;
+      min-height: 10vh;
+      transition: all 0.3s ease;
+    }
+
+    .select-btn {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      flex: 1;
+      max-width: 85px;
+      height: 9vmin;
+      max-height: 75px;
+      min-height: 48px;
+      padding: 3px;
+      border: 2px solid #D5CEC4;
+      background-color: #FFFFFF;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.03);
+    }
+
+    .select-btn:hover {
+      transform: translateY(-2px);
+      border-color: #B5A897;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.06);
+    }
+
+    .select-btn.active {
+      border-color: #7C6A58;
+      background-color: #EFEBE4;
+      box-shadow: inset 0 2px 4px rgba(0,0,0,0.06);
+    }
+
+    .btn-icon {
+      width: 100%;
+      height: 52%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .btn-label {
+      font-size: clamp(8px, 1.1vmin, 12px);
+      font-weight: 600;
+      color: #5C5247;
+      text-align: center;
+      line-height: 1.1;
+      margin-top: 2px;
+      white-space: nowrap;
+    }
+
+    /* 버튼 사이 굵은 구분선 */
+    .btn-divider {
+      width: 3px;
+      height: 5vmin;
+      max-height: 45px;
+      min-height: 30px;
+      background-color: #8C7B6B;
+      border-radius: 2px;
+      margin: 0 1px;
+      opacity: 0.7;
+    }
+
+    /* 스테이지 및 바닥 */
+    .stage {
+      flex: 1;
+      position: relative;
+      display: flex;
+      justify-content: center;
+      align-items: flex-end;
+      width: 100%;
+    }
+
+    .ground {
+      position: absolute;
+      bottom: 7vh;
+      width: 85%;
+      height: 6px;
+      background-color: #8C7B6B;
+      border-radius: 3px;
+      transition: bottom 0.3s ease;
+    }
+
+    .stack-container {
+      position: absolute;
+      bottom: calc(7vh + 6px);
+      display: flex;
+      flex-direction: column-reverse;
+      align-items: center;
+      width: 100%;
+      pointer-events: none;
+      transition: bottom 0.3s ease;
+    }
+
+    .stack-item {
+      transition: all 0.5s cubic-bezier(0.25, 1, 0.5, 1);
+      display: flex;
+      justify-content: center;
+      align-items: flex-end;
+      position: relative;
+    }
+
+    .ziplock-item { z-index: 1; }
+    .foam-item { z-index: 2; margin-bottom: -1px; }
+    .bottle-item { z-index: 3; margin-bottom: -4px; }
+
+    svg {
+      overflow: visible;
+      display: block;
+    }
+
+    /* 화면 중앙 '결과 보기' 버튼 */
+    .result-btn-wrapper {
+      position: absolute;
+      top: 55%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      z-index: 100;
+      display: none;
+      animation: popUp 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+
+    @keyframes popUp {
+      0% { transform: translate(-50%, -50%) scale(0.5); opacity: 0; }
+      100% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+    }
+
+    .result-btn {
+      padding: 12px 26px;
+      font-size: clamp(14px, 2.2vmin, 20px);
+      font-weight: 700;
+      color: #FFFFFF;
+      background: linear-gradient(135deg, #7C6A58 0%, #5A4B3C 100%);
+      border: 3px solid #FAF8F5;
+      border-radius: 50px;
+      cursor: pointer;
+      box-shadow: 0 8px 20px rgba(0,0,0,0.25);
+      transition: all 0.2s ease;
+      white-space: nowrap;
+    }
+
+    .result-btn:hover {
+      transform: scale(1.06);
+      background: linear-gradient(135deg, #8D7B69 0%, #6B5C4D 100%);
+      box-shadow: 0 10px 24px rgba(0,0,0,0.3);
+    }
+
+    .result-btn:active {
+      transform: scale(0.96);
+    }
+
+    /* ==========================================
+       📱 세로 모드(Portrait) 감지 및 최적화 반응형 CSS
+       ========================================== */
+    @media (orientation: portrait) {
+      .control-panel {
+        min-height: 8vh;
+        padding: 0.5vmin;
+        gap: 0.5vmin;
+      }
+
+      .select-btn {
+        height: 7.5vh;
+        min-height: 42px;
+        padding: 2px;
+      }
+
+      .btn-label {
+        font-size: clamp(7px, 1.8vw, 10px);
+      }
+
+      .ground {
+        bottom: 5vh;
+      }
+
+      .stack-container {
+        bottom: calc(5vh + 6px);
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="lab-container">
+    <!-- 화면 중앙 '결과 보기' 버튼 -->
+    <div class="result-btn-wrapper" id="resultBtnWrapper">
+      <button class="result-btn" onclick="applyPressureResult()">결과 보기</button>
+    </div>
+
+    <!-- 왼쪽 실험 영역 -->
+    <div class="split-section" id="section-left">
+      <div class="control-panel">
+        <button class="select-btn" data-type="zip" onclick="toggleItem('left', 'zip')">
+          <div class="btn-icon">
+            <svg viewBox="0 0 40 30" width="80%" height="80%">
+              <path d="M 4 8 C 4 8 20 6 36 8 L 34 24 C 34 24 18 26 6 24 Z" fill="#E2EAF4" stroke="#222" stroke-width="2"/>
+              <line x1="4" y1="12" x2="36" y2="12" stroke="#E63946" stroke-width="2.5"/>
+              <path d="M 10 16 Q 16 22 24 18" fill="none" stroke="#222" stroke-width="1.8" stroke-linecap="round"/>
+            </svg>
+          </div>
+          <span class="btn-label">지퍼백</span>
+        </button>
+
+        <div class="btn-divider"></div>
+
+        <button class="select-btn" data-type="foamSmall" onclick="toggleItem('left', 'foamSmall')">
+          <div class="btn-icon">
+            <svg viewBox="0 0 40 30" width="80%" height="80%">
+              <rect x="10" y="8" width="20" height="14" fill="#E8E4DF" stroke="#222" stroke-width="2" rx="1"/>
+              <line x1="10" y1="18" x2="30" y2="18" stroke="#222" stroke-width="1.5"/>
+            </svg>
+          </div>
+          <span class="btn-label">작은 폼보드</span>
+        </button>
+
+        <button class="select-btn" data-type="foamLarge" onclick="toggleItem('left', 'foamLarge')">
+          <div class="btn-icon">
+            <svg viewBox="0 0 40 30" width="80%" height="80%">
+              <rect x="2" y="8" width="36" height="14" fill="#E8E4DF" stroke="#222" stroke-width="2" rx="1"/>
+              <line x1="2" y1="18" x2="38" y2="18" stroke="#222" stroke-width="1.5"/>
+            </svg>
+          </div>
+          <span class="btn-label">큰 폼보드</span>
+        </button>
+
+        <div class="btn-divider"></div>
+
+        <button class="select-btn" data-type="bottleHeavy" onclick="toggleItem('left', 'bottleHeavy')">
+          <div class="btn-icon">
+            <svg viewBox="0 0 30 40" width="70%" height="80%">
+              <rect x="9" y="3" width="12" height="7" fill="#FFF" stroke="#222" stroke-width="2" rx="1"/>
+              <rect x="5" y="10" width="20" height="26" fill="#FFF" stroke="#222" stroke-width="2" rx="2"/>
+              <circle cx="10" cy="28" r="2.5" fill="#777" stroke="#222" stroke-width="0.8"/>
+              <circle cx="15" cy="28" r="2.5" fill="#777" stroke="#222" stroke-width="0.8"/>
+              <circle cx="20" cy="28" r="2.5" fill="#777" stroke="#222" stroke-width="0.8"/>
+              <circle cx="12.5" cy="23" r="2.5" fill="#777" stroke="#222" stroke-width="0.8"/>
+              <circle cx="17.5" cy="23" r="2.5" fill="#777" stroke="#222" stroke-width="0.8"/>
+            </svg>
+          </div>
+          <span class="btn-label">많은 쇠구슬</span>
+        </button>
+
+        <button class="select-btn" data-type="bottleLight" onclick="toggleItem('left', 'bottleLight')">
+          <div class="btn-icon">
+            <svg viewBox="0 0 30 40" width="70%" height="80%">
+              <rect x="9" y="3" width="12" height="7" fill="#FFF" stroke="#222" stroke-width="2" rx="1"/>
+              <rect x="5" y="10" width="20" height="26" fill="#FFF" stroke="#222" stroke-width="2" rx="2"/>
+              <circle cx="12" cy="28" r="2.5" fill="#777" stroke="#222" stroke-width="0.8"/>
+              <circle cx="18" cy="28" r="2.5" fill="#777" stroke="#222" stroke-width="0.8"/>
+            </svg>
+          </div>
+          <span class="btn-label">적은 쇠구슬</span>
+        </button>
+      </div>
+
+      <div class="stage">
+        <div class="stack-container" id="stack-left"></div>
+        <div class="ground"></div>
+      </div>
+    </div>
+
+    <!-- 오른쪽 실험 영역 -->
+    <div class="split-section" id="section-right">
+      <div class="control-panel">
+        <button class="select-btn" data-type="zip" onclick="toggleItem('right', 'zip')">
+          <div class="btn-icon">
+            <svg viewBox="0 0 40 30" width="80%" height="80%">
+              <path d="M 4 8 C 4 8 20 6 36 8 L 34 24 C 34 24 18 26 6 24 Z" fill="#E2EAF4" stroke="#222" stroke-width="2"/>
+              <line x1="4" y1="12" x2="36" y2="12" stroke="#E63946" stroke-width="2.5"/>
+              <path d="M 10 16 Q 16 22 24 18" fill="none" stroke="#222" stroke-width="1.8" stroke-linecap="round"/>
+            </svg>
+          </div>
+          <span class="btn-label">지퍼백</span>
+        </button>
+
+        <div class="btn-divider"></div>
+
+        <button class="select-btn" data-type="foamSmall" onclick="toggleItem('right', 'foamSmall')">
+          <div class="btn-icon">
+            <svg viewBox="0 0 40 30" width="80%" height="80%">
+              <rect x="10" y="8" width="20" height="14" fill="#E8E4DF" stroke="#222" stroke-width="2" rx="1"/>
+              <line x1="10" y1="18" x2="30" y2="18" stroke="#222" stroke-width="1.5"/>
+            </svg>
+          </div>
+          <span class="btn-label">작은 폼보드</span>
+        </button>
+
+        <button class="select-btn" data-type="foamLarge" onclick="toggleItem('right', 'foamLarge')">
+          <div class="btn-icon">
+            <svg viewBox="0 0 40 30" width="80%" height="80%">
+              <rect x="2" y="8" width="36" height="14" fill="#E8E4DF" stroke="#222" stroke-width="2" rx="1"/>
+              <line x1="2" y1="18" x2="38" y2="18" stroke="#222" stroke-width="1.5"/>
+            </svg>
+          </div>
+          <span class="btn-label">큰 폼보드</span>
+        </button>
+
+        <div class="btn-divider"></div>
+
+        <button class="select-btn" data-type="bottleHeavy" onclick="toggleItem('right', 'bottleHeavy')">
+          <div class="btn-icon">
+            <svg viewBox="0 0 30 40" width="70%" height="80%">
+              <rect x="9" y="3" width="12" height="7" fill="#FFF" stroke="#222" stroke-width="2" rx="1"/>
+              <rect x="5" y="10" width="20" height="26" fill="#FFF" stroke="#222" stroke-width="2" rx="2"/>
+              <circle cx="10" cy="28" r="2.5" fill="#777" stroke="#222" stroke-width="0.8"/>
+              <circle cx="15" cy="28" r="2.5" fill="#777" stroke="#222" stroke-width="0.8"/>
+              <circle cx="20" cy="28" r="2.5" fill="#777" stroke="#222" stroke-width="0.8"/>
+              <circle cx="12.5" cy="23" r="2.5" fill="#777" stroke="#222" stroke-width="0.8"/>
+              <circle cx="17.5" cy="23" r="2.5" fill="#777" stroke="#222" stroke-width="0.8"/>
+            </svg>
+          </div>
+          <span class="btn-label">많은 쇠구슬</span>
+        </button>
+
+        <button class="select-btn" data-type="bottleLight" onclick="toggleItem('right', 'bottleLight')">
+          <div class="btn-icon">
+            <svg viewBox="0 0 30 40" width="70%" height="80%">
+              <rect x="9" y="3" width="12" height="7" fill="#FFF" stroke="#222" stroke-width="2" rx="1"/>
+              <rect x="5" y="10" width="20" height="26" fill="#FFF" stroke="#222" stroke-width="2" rx="2"/>
+              <circle cx="12" cy="28" r="2.5" fill="#777" stroke="#222" stroke-width="0.8"/>
+              <circle cx="18" cy="28" r="2.5" fill="#777" stroke="#222" stroke-width="0.8"/>
+            </svg>
+          </div>
+          <span class="btn-label">적은 쇠구슬</span>
+        </button>
+      </div>
+
+      <div class="stage">
+        <div class="stack-container" id="stack-right"></div>
+        <div class="ground"></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const state = {
+      left: { zip: false, foam: null, bottle: null },
+      right: { zip: false, foam: null, bottle: null },
+      isPressed: false
+    };
+
+    function toggleItem(side, itemType) {
+      const s = state[side];
+
+      if (itemType === 'zip') {
+        s.zip = !s.zip;
+      } else if (itemType === 'foamSmall' || itemType === 'foamLarge') {
+        s.foam = (s.foam === itemType) ? null : itemType;
+      } else if (itemType === 'bottleHeavy' || itemType === 'bottleLight') {
+        s.bottle = (s.bottle === itemType) ? null : itemType;
+      }
+
+      state.isPressed = false;
+
+      updateUI('left');
+      updateUI('right');
+      checkFullSelection();
+    }
+
+    function checkFullSelection() {
+      const isLeftComplete = state.left.zip && state.left.foam && state.left.bottle;
+      const isRightComplete = state.right.zip && state.right.foam && state.right.bottle;
+      const resultBtnWrapper = document.getElementById('resultBtnWrapper');
+
+      if (isLeftComplete && isRightComplete && !state.isPressed) {
+        resultBtnWrapper.style.display = 'block';
+      } else {
+        resultBtnWrapper.style.display = 'none';
+      }
+    }
+
+    function applyPressureResult() {
+      state.isPressed = true;
+      document.getElementById('resultBtnWrapper').style.display = 'none';
+      updateUI('left');
+      updateUI('right');
+    }
+
+    function updateUI(side) {
+      const s = state[side];
+      const section = document.getElementById(`section-${side}`);
+      const stack = document.getElementById(`stack-${side}`);
+
+      const buttons = section.querySelectorAll('.select-btn');
+      buttons.forEach(btn => {
+        const type = btn.getAttribute('data-type');
+        if (type === 'zip') {
+          btn.classList.toggle('active', s.zip);
+        } else if (type === 'foamSmall' || type === 'foamLarge') {
+          btn.classList.toggle('active', s.foam === type);
+        } else if (type === 'bottleHeavy' || type === 'bottleLight') {
+          btn.classList.toggle('active', s.bottle === type);
+        }
+      });
+
+      let force = 0;
+      let area = 1;
+
+      if (s.bottle === 'bottleLight') force = 1.0;
+      else if (s.bottle === 'bottleHeavy') force = 3.2;
+
+      if (s.foam === 'foamSmall') area = 1.0;
+      else if (s.foam === 'foamLarge') area = 1.8;
+      else if (!s.foam && s.bottle) area = 0.6;
+
+      let pressureRatio = 0;
+      if (s.zip && s.bottle && state.isPressed) {
+        pressureRatio = force / area;
+      }
+
+      // 🔍 가로/세로 방향 감지 및 자동 동적 스케일링 연산
+      const stageWidth = section.clientWidth;
+      const stageHeight = section.clientHeight;
+      const isPortrait = window.innerHeight > window.innerWidth;
+
+      // 세로 모드(Portrait)에서는 화면 폭 및 높이에 맞춰 스케일을 대폭 조정
+      let baseScale;
+      if (isPortrait) {
+        // 세로 방향: 너비가 좁으므로 가로 스케일을 제한하고 높이에 맞춰 압축
+        baseScale = Math.min(Math.max(stageWidth / 310, 0.42), 0.85);
+      } else {
+        // 가로 방향: 기존 가로 모드 스케일 유지
+        baseScale = Math.min(Math.max(stageWidth / 400, 0.55), 1.2);
+      }
+
+      stack.innerHTML = '';
+
+      // 1. 지퍼백 렌더링
+      if (s.zip) {
+        const zipDiv = document.createElement('div');
+        zipDiv.className = 'stack-item ziplock-item';
+        
+        const normalizeP = Math.min(Math.max((pressureRatio - 0.4) / 2.8, 0), 1); 
+        const zipHeight = (45 - (normalizeP * 28)) * baseScale; 
+        const zipWidth = (180 + (normalizeP * 55)) * baseScale; 
+        const waterBulge = 10 + (normalizeP * 14);
+
+        zipDiv.innerHTML = `
+          <svg width="${zipWidth}" height="${zipHeight + (12 * baseScale)}" viewBox="0 0 200 60" preserveAspectRatio="none">
+            <defs>
+              <linearGradient id="waterGrad_${side}" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stop-color="#EAF3FD" stop-opacity="0.9"/>
+                <stop offset="70%" stop-color="#C5DDFA" stop-opacity="0.8"/>
+                <stop offset="100%" stop-color="#A2C8F5" stop-opacity="0.85"/>
+              </linearGradient>
+            </defs>
+            <path d="M 12 18 
+                     C 30 ${5 - waterBulge}, 170 ${5 - waterBulge}, 188 18 
+                     C 198 32, 196 48, 185 54 
+                     C 160 ${58 + waterBulge}, 40 ${58 + waterBulge}, 15 54 
+                     C 4 48, 2 32, 12 18 Z" 
+                  fill="url(#waterGrad_${side})" stroke="#1A1A1A" stroke-width="3" stroke-linejoin="round"/>
+            <path d="M 175 12 L 180 56" stroke="#1A1A1A" stroke-width="3.5" stroke-linecap="round"/>
+            <path d="M 171 14 L 175 54" stroke="#E63946" stroke-width="3" stroke-linecap="round"/>
+            <path d="M 35 28 C 55 42, 85 40, 110 26" fill="none" stroke="#1A1A1A" stroke-width="2.5" stroke-linecap="round"/>
+            <path d="M 115 36 C 135 44, 155 35, 165 24" fill="none" stroke="#1A1A1A" stroke-width="2" stroke-linecap="round"/>
+          </svg>
+        `;
+        stack.appendChild(zipDiv);
+      }
+
+      // 2. 폼보드 렌더링
+      if (s.foam) {
+        const foamDiv = document.createElement('div');
+        foamDiv.className = 'stack-item foam-item';
+        const isLarge = s.foam === 'foamLarge';
+        const foamWidth = (isLarge ? 220 : 110) * baseScale;
+        const foamHeight = 14 * baseScale;
+        
+        foamDiv.innerHTML = `
+          <svg width="${foamWidth}" height="${foamHeight}" viewBox="0 0 ${isLarge ? 220 : 110} 14" preserveAspectRatio="none">
+            <rect x="2" y="1" width="${(isLarge ? 220 : 110) - 4}" height="11" fill="#E8E4DF" stroke="#1A1A1A" stroke-width="2.5" rx="2"/>
+          </svg>
+        `;
+        stack.appendChild(foamDiv);
+      }
+
+      // 3. 공병 렌더링
+      if (s.bottle) {
+        const bottleDiv = document.createElement('div');
+        bottleDiv.className = 'stack-item bottle-item';
+        const isHeavy = s.bottle === 'bottleHeavy';
+        
+        const bWidth = 80 * baseScale;
+        const bHeight = 100 * baseScale;
+
+        const createMarbles = (count) => {
+          let marblesSVG = '';
+          const positions = [
+            {cx: 24, cy: 92}, {cx: 36, cy: 92}, {cx: 48, cy: 92}, {cx: 60, cy: 92}, {cx: 72, cy: 92},
+            {cx: 30, cy: 81}, {cx: 42, cy: 81}, {cx: 54, cy: 81}, {cx: 66, cy: 81},
+            {cx: 24, cy: 70}, {cx: 36, cy: 70}, {cx: 48, cy: 70}, {cx: 60, cy: 70}, {cx: 72, cy: 70},
+            {cx: 30, cy: 59}, {cx: 42, cy: 59}, {cx: 54, cy: 59}, {cx: 66, cy: 59},
+            {cx: 36, cy: 48}, {cx: 48, cy: 48}, {cx: 60, cy: 48}
+          ];
+
+          const drawCount = count === 'heavy' ? positions.length : 6;
+          for (let i = 0; i < drawCount; i++) {
+            const p = positions[i];
+            marblesSVG += `
+              <g>
+                <circle cx="${p.cx}" cy="${p.cy}" r="5.5" fill="url(#steelGrad_${side})" stroke="#1A1A1A" stroke-width="1.2"/>
+                <circle cx="${p.cx - 1.8}" cy="${p.cy - 1.8}" r="1.5" fill="#FFFFFF" opacity="0.8"/>
+              </g>
+            `;
+          }
+          return marblesSVG;
+        };
+
+        bottleDiv.innerHTML = `
+          <svg width="${bWidth}" height="${bHeight}" viewBox="0 0 96 105" preserveAspectRatio="xMidYMax meet">
+            <defs>
+              <radialGradient id="steelGrad_${side}" cx="35%" cy="35%" r="65%">
+                <stop offset="0%" stop-color="#FFFFFF"/>
+                <stop offset="40%" stop-color="#B0B5B9"/>
+                <stop offset="85%" stop-color="#4A5056"/>
+                <stop offset="100%" stop-color="#2B2F33"/>
+              </radialGradient>
+            </defs>
+            <rect x="36" y="2" width="24" height="10" fill="#FFFFFF" stroke="#1A1A1A" stroke-width="2.8" rx="2"/>
+            <line x1="36" y1="7" x2="60" y2="7" stroke="#1A1A1A" stroke-width="2"/>
+            <path d="M 30 12 L 66 12 L 70 20 L 26 20 Z" fill="#FFFFFF" stroke="#1A1A1A" stroke-width="2.8" stroke-linejoin="round"/>
+            <rect x="18" y="20" width="60" height="84" fill="rgba(255,255,255,0.75)" stroke="#1A1A1A" stroke-width="3" rx="4"/>
+            ${createMarbles(isHeavy ? 'heavy' : 'light')}
+          </svg>
+        `;
+        stack.appendChild(bottleDiv);
+      }
+    }
+
+    // 창 크기 변경 또는 기기 회전(Orientation) 시 자동 재계산
+    window.addEventListener('resize', () => {
+      updateUI('left');
+      updateUI('right');
+      checkFullSelection();
+    });
+
+    window.addEventListener('orientationchange', () => {
+      setTimeout(() => {
+        updateUI('left');
+        updateUI('right');
+        checkFullSelection();
+      }, 100);
+    });
+
+    updateUI('left');
+    updateUI('right');
+  </script>
+</body>
+</html>
